@@ -24,6 +24,9 @@ trait IERC20 {
     fn transfer(recipient: ContractAddress, amount: u256) -> bool;
 
     #[external]
+    fn transfer_from(sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool;
+
+    #[external]
     fn transferFrom(sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool;
 
     #[external]
@@ -52,7 +55,7 @@ trait NGTToken {
     fn transfer(recipient: ContractAddress, amount: u256) -> bool;
 
     #[external]
-    fn transferFrom(sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool;
+    fn transfer_from(sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool;
 
     #[external]
     fn approve(spender: ContractAddress, amount: u256) -> bool;
@@ -76,7 +79,6 @@ mod StarknetNS {
     use traits::Into;
     use traits::TryInto;
     use option::OptionTrait;
-    
 
     struct Storage {
         myns: LegacyMap::<ContractAddress, felt252>,
@@ -229,7 +231,7 @@ mod StarknetNS {
     }
 
     #[external]
-    fn become_community_leader(){
+    fn become_community_leader(version: u8){
        let caller: ContractAddress = get_caller_address();
        assert(recommend_effect::read(caller), 'not effect address');
        assert((!my_community::read(caller).is_zero()) & (!my_recommend::read(caller).is_zero()), 'claim token first');
@@ -242,9 +244,16 @@ mod StarknetNS {
        let profit_amount: felt252 = _profit_amount.into();
        let profit_amount_: u256 = profit_amount.into();
 
-       IERC20Dispatcher { contract_address: eth20_address::read() }.transferFrom(caller, get_contract_address(), (_amount - 2 * profit_amount_));
-       IERC20Dispatcher { contract_address: eth20_address::read() }.transferFrom(caller, my_community::read(caller), profit_amount_);
-       IERC20Dispatcher { contract_address: eth20_address::read() }.transferFrom(caller, my_recommend::read(caller), profit_amount_);
+       if(version == 0){
+          IERC20Dispatcher { contract_address: eth20_address::read() }.transferFrom(caller, get_contract_address(), (_amount - 2 * profit_amount_));
+          IERC20Dispatcher { contract_address: eth20_address::read() }.transferFrom(caller, my_community::read(caller), profit_amount_);
+          IERC20Dispatcher { contract_address: eth20_address::read() }.transferFrom(caller, my_recommend::read(caller), profit_amount_);
+       }else{
+          IERC20Dispatcher { contract_address: eth20_address::read() }.transfer_from(caller, get_contract_address(), (_amount - 2 * profit_amount_));
+          IERC20Dispatcher { contract_address: eth20_address::read() }.transfer_from(caller, my_community::read(caller), profit_amount_);
+          IERC20Dispatcher { contract_address: eth20_address::read() }.transfer_from(caller, my_recommend::read(caller), profit_amount_);
+       }
+       
        my_community::write(caller, caller);
        //event
        InviteEarnInfo(caller, my_recommend::read(caller), 2, profit_amount_, get_block_timestamp());
@@ -252,7 +261,7 @@ mod StarknetNS {
     }
 
     #[external]
-    fn set_ns(str: felt252, _year: u256) {
+    fn set_ns(str: felt252, _year: u256, version: u8) {
 
         assert(_year >= 1, 'year not allow');
         assert(_year <= 5, 'year not allow');
@@ -262,10 +271,15 @@ mod StarknetNS {
         
         let caller: ContractAddress = get_caller_address();
         let thisaddress: ContractAddress = get_contract_address();
-        IERC20Dispatcher { contract_address: eth20_address::read() }.transferFrom(caller, thisaddress, _price);
+        if(version == 0){
+            IERC20Dispatcher { contract_address: eth20_address::read() }.transferFrom(caller, thisaddress, _price);
+        }else{
+            IERC20Dispatcher { contract_address: eth20_address::read() }.transfer_from(caller, thisaddress, _price);
+        }
         let _address: ContractAddress = ns_to_address::read(result_str);
         let _str: felt252 = myns::read(caller);
         assert(_address.is_zero(), 'ns already register');
+        // assert(_str.is_zero(), 'address already register');
         assert(_str == 0, 'address already register');
         ns_to_address::write(result_str, caller);
         let years: u64 = (_year.try_into().unwrap()).try_into().unwrap();
@@ -278,7 +292,7 @@ mod StarknetNS {
     }
 
     #[external]
-    fn renew_ns(str: felt252, _year: u256) {
+    fn renew_ns(str: felt252, _year: u256, version: u8) {
         assert(allow_renew::read(), 'not allow');
         assert(_year >= 1, 'year not allow');
         assert(_year <= 5, 'year not allow');
@@ -288,7 +302,11 @@ mod StarknetNS {
         
         let caller: ContractAddress = get_caller_address();
         let thisaddress: ContractAddress = get_contract_address();
-        IERC20Dispatcher { contract_address: eth20_address::read() }.transferFrom(caller, thisaddress, _price);
+        if(version == 0){
+            IERC20Dispatcher { contract_address: eth20_address::read() }.transferFrom(caller, thisaddress, _price);
+        }else{
+            IERC20Dispatcher { contract_address: eth20_address::read() }.transfer_from(caller, thisaddress, _price);
+        }
         let _address: ContractAddress = ns_to_address::read(result_str);
         assert(_address == caller, 'not belong');
         let _time = ns_to_time::read(result_str);
@@ -361,7 +379,6 @@ mod StarknetNS {
     
     #[view]
     fn get_amount_of_chars(len: u64, num: u256, str: felt252) -> u64 { 
-        
         let str_new: u256 = str.into();
         if (num * 255 >= str_new) {
             return len;
@@ -374,7 +391,6 @@ mod StarknetNS {
             return next;
         } 
     }
-
 
     #[view]
     fn add_suffix(str: felt252) -> felt252 { 
