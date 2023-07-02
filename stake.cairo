@@ -78,12 +78,11 @@ trait NGTToken {
     fn transfer(recipient: ContractAddress, amount: u256) -> bool;
 
     #[external]
-    fn transferFrom(sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool;
+    fn transfer_from(sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool;
 
     #[external]
     fn approve(spender: ContractAddress, amount: u256) -> bool;
 }
-//0x02b030683313ad20c012c5903107710c7b039bf4cfcabaed0044b98a82f72c8b stake test
 
 
 #[contract]
@@ -128,7 +127,7 @@ mod Stake {
     fn make_order(amount: u256, kinds: u8){
        assert(kinds ==1 | kinds == 2 | kinds == 3, 'kinds not accept');
        let caller: ContractAddress = get_caller_address();
-       NGTTokenDispatcher { contract_address: ngttoken_address::read() }.transferFrom(caller, get_contract_address(), amount);
+       NGTTokenDispatcher { contract_address: ngttoken_address::read() }.transfer_from(caller, get_contract_address(), amount);
        let mut _index = address_to_index::read(caller); 
        _index = _index + 1;
        address_to_seedmoney::write((caller, _index), amount);
