@@ -11,21 +11,30 @@ trait IERC20 {
     #[view]
     fn total_supply() -> u256;
     #[view]
+    fn totalSupply() -> u256;
+    #[view]
+    fn balance_of(account: ContractAddress) -> u256;
+    #[view]
     fn balanceOf(account: ContractAddress) -> u256;
     #[view]
     fn allowance(owner: ContractAddress, spender: ContractAddress) -> u256;
     #[external]
     fn transfer(recipient: ContractAddress, amount: u256) -> bool;
     #[external]
+    fn transfer_from(sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool;
+    #[external]
     fn transferFrom(sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool;
     #[external]
     fn approve(spender: ContractAddress, amount: u256) -> bool;
     #[external]
+    fn increase_allowance(spender: ContractAddress, added_value: u256) -> bool;
+    #[external]
     fn increaseAllowance(spender: ContractAddress, added_value: u256) -> bool;
+    #[external]
+    fn decrease_allowance(spender: ContractAddress, subtracted_value: u256) -> bool;
     #[external]
     fn decreaseAllowance(spender: ContractAddress, subtracted_value: u256) -> bool;
 }
-
 
 #[contract]
 mod ERC20 {
@@ -71,6 +80,14 @@ mod ERC20 {
             _total_supply::read()
         }
 
+        fn totalSupply() -> u256 {
+            _total_supply::read()
+        }
+
+        fn balance_of(account: ContractAddress) -> u256 {
+            _balances::read(account)
+        }
+
         fn balanceOf(account: ContractAddress) -> u256 {
             _balances::read(account)
         }
@@ -81,6 +98,15 @@ mod ERC20 {
 
         fn transfer(recipient: ContractAddress, amount: u256) -> bool {
             let sender = get_caller_address();
+            _transfer(sender, recipient, amount);
+            true
+        }
+
+        fn transfer_from(
+            sender: ContractAddress, recipient: ContractAddress, amount: u256
+        ) -> bool {
+            let caller = get_caller_address();
+            _spend_allowance(sender, caller, amount);
             _transfer(sender, recipient, amount);
             true
         }
@@ -100,8 +126,16 @@ mod ERC20 {
             true
         }
 
+        fn increase_allowance(spender: ContractAddress, added_value: u256) -> bool {
+            _increaseAllowance(spender, added_value)
+        }
+
         fn increaseAllowance(spender: ContractAddress, added_value: u256) -> bool {
             _increaseAllowance(spender, added_value)
+        }
+
+        fn decrease_allowance(spender: ContractAddress, subtracted_value: u256) -> bool {
+            _decreaseAllowance(spender, subtracted_value)
         }
 
         fn decreaseAllowance(spender: ContractAddress, subtracted_value: u256) -> bool {
@@ -140,6 +174,16 @@ mod ERC20 {
     }
 
     #[view]
+    fn totalSupply() -> u256 {
+        ERC20::totalSupply()
+    }
+
+    #[view]
+    fn balance_of(account: ContractAddress) -> u256 {
+        ERC20::balance_of(account)
+    }
+
+    #[view]
     fn balanceOf(account: ContractAddress) -> u256 {
         ERC20::balanceOf(account)
     }
@@ -163,7 +207,7 @@ mod ERC20 {
     fn mint(recipient: ContractAddress, amount: u256) {
         let caller = get_caller_address();
         assert(caller == mint_friend::read(), 'not friend');
-        if(mint_amount::read() + amount <= 2000000000000000000000000000){
+        if(mint_amount::read() + amount <= 1000000000000000000000000000){
            _mint(recipient, amount);
            mint_amount::write(mint_amount::read() + amount);
         }
@@ -193,6 +237,11 @@ mod ERC20 {
     }
 
     #[external]
+    fn transfer_from(sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool {
+        ERC20::transfer_from(sender, recipient, amount)
+    }
+
+    #[external]
     fn transferFrom(sender: ContractAddress, recipient: ContractAddress, amount: u256) -> bool {
         ERC20::transferFrom(sender, recipient, amount)
     }
@@ -203,8 +252,18 @@ mod ERC20 {
     }
 
     #[external]
+    fn increase_allowance(spender: ContractAddress, added_value: u256) -> bool {
+        ERC20::increase_allowance(spender, added_value)
+    }
+
+    #[external]
     fn increaseAllowance(spender: ContractAddress, added_value: u256) -> bool {
         ERC20::increaseAllowance(spender, added_value)
+    }
+
+    #[external]
+    fn decrease_allowance(spender: ContractAddress, subtracted_value: u256) -> bool {
+        ERC20::decrease_allowance(spender, subtracted_value)
     }
 
     #[external]
